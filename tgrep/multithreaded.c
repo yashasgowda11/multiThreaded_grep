@@ -36,6 +36,14 @@ int num_workers;              // Number of worker threads
 int *thread_statuses;         // Array of thread statuses
 sem_t *thread_statuses_lock;  // Semaphore for locking the thread status array
 
+// Flags option (1 means in use, 0 otherwise) 
+int c_option = 0; // This prints only a count of the lines that match a pattern
+int h_option = 0; // Display the matched lines, but do not display the filenames
+int i_option = 0; // Ignores, case for matching
+int l_option = 0; // Displays list of filenames containing text only.
+int n_option = 0; // Display the matched lines and their line numbers
+int v_option = 0; // This prints out all the lines that do not matches the pattern
+
 // Initializes the task queue
 void task_queue_initialize(struct task_queue *kyu) {
     struct task_queue_node *placeholder = malloc(sizeof(struct task_queue_node)); // Allocate memory for the dummy node
@@ -171,9 +179,43 @@ void worker_behavior(int *id) {
 
 // Main function
 int main(int argc, char *argv[]) {
-    num_workers = atoi(argv[1]); // Convert the number of workers from string to integer
-    char *rootpath = argv[2]; // Store the root path
-    search_string = argv[3]; // Store the search string
+    num_workers = -1; // to later check if num_workers is set or not
+    search_string = NULL;
+    char *rootpath = NULL;
+    int non_flag_count = 0; // if this variable == 0, that argument will be rootpath, 1 will be the search_string
+
+    // dispatch parameters
+    for (int i = 1; i < argc; i++) {
+        if (strcmp(argv[i], "-c") == 0) {
+                c_option = 1; // This prints only a count of the lines that match a pattern
+        } else if (strcmp(argv[i], "-h") == 0) {
+                h_option = 1; // Display the matched lines, but do not display the filenames
+        } else if (strcmp(argv[i], "-i") == 0) {
+                i_option = 1; // Ignores, case for matching
+        } else if (strcmp(argv[i], "-l") == 0) {
+                l_option = 1; // Displays list of filenames containing text only.
+        } else if (strcmp(argv[i], "-n") == 0) {
+                n_option = 1; // Display the matched lines and their line numbers
+        } else if (strcmp(argv[i], "-v") == 0) {
+                v_option = 1;
+        } else if (strcmp(argv[i], "-worker") == 0) {
+                num_workers = atoi(argv[++i]); // Convert the number of workers from string to integer
+        } else {
+                if (non_flag_count == 0) {
+                    rootpath = argv[i];
+                    non_flag_count++;
+                } else {
+                    search_string = argv[i];
+                }
+        }
+    }
+
+    if (num_workers == -1 || search_string == NULL || rootpath == NULL) {
+        fprintf(stderr, "Must have num_workers, search string and root path\n");
+        exit(1);
+    }
+
+
     pthread_t workers[num_workers]; // Declare an array of worker threads
     int workerids[num_workers]; // Declare an array of worker IDs
     int statuses[num_workers]; // Declare an array of statuses
